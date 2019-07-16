@@ -1,0 +1,101 @@
+web:
+  image: 'gitlab/gitlab-ce:11.11.3-ce.0'
+  restart: always
+  hostname: 'gitlab.example.com'
+  links:
+    # - postgresql:postgresql
+    - redis:redis
+  volumes:
+    - /etc/localtime:/etc/localtime:ro
+    - /srv/gitlab/config:/etc/gitlab:z
+    - /srv/gitlab/logs:/var/log/gitlab:z
+    - /srv/gitlab/data:/var/opt/gitlab:z
+    - /srv/gitlab/etc:/etc/gitlab:z
+    - /srv/gitlab/runner:/etc/gitlab-runner:z
+  environment:
+    GITLAB_OMNIBUS_CONFIG: |
+      external_url 'https://gitlab.example.com/'
+
+      gitlab_rails['gitlab_ssh_host'] = 'gitlab.example.com'
+      gitlab_rails['time_zone'] = 'Asia/Tokyo'
+
+      gitlab_rails['backup_keep_time'] = '600'
+
+      #########################
+      nginx['listen_https'] = false
+      nginx['listen_port'] = 80
+      nginx['proxy_set_headers'] = {"X-Forwarded-Proto" => "https", 'X-Forwarded-Ssl' => 'on'}
+      nginx['enable'] = true
+      nginx['redirect_http_to_https'] = false
+      nginx['redirect_http_to_https_port'] = 81
+
+      gitlab_rails['gitlab_email_enabled'] = true
+      gitlab_rails['gitlab_email_from'] = 'gitlab@example.com'
+      gitlab_rails['gitlab_email_display_name'] = 'GitLab From example'
+      gitlab_rails['smtp_enable'] = true
+      gitlab_rails['smtp_address'] = "SMTPHost"  // SMTP HOST
+      gitlab_rails['smtp_port'] = 587
+      gitlab_rails['smtp_user_name'] = "xxxxxxxxxxxxxxxxxxxx"  // SMTP USER
+      gitlab_rails['smtp_password'] = "xxxxxxxxxxxxxxxxxxxxx"  // SMTP PWS
+      gitlab_rails['smtp_domain'] = "domain"   //SMTP Domain
+      gitlab_rails['smtp_authentication'] = "login"
+      gitlab_rails['smtp_enable_starttls_auto'] = true
+      #gitlab_rails['smtp_tls'] = false
+      #gitlab_rails['smtp_openssl_verify_mode'] = 'peer'
+
+      gitlab_workhorse['enable'] = true
+      gitlab_workhorse['listen_network'] = "tcp"
+      gitlab_workhorse['listen_addr'] = "gitlab.example.com:8080"
+      postgresql['enable'] = false
+      gitlab_rails['db_username'] = "gitlab"
+      gitlab_rails['db_password'] = "gitlab"
+      gitlab_rails['db_host'] = "hostIP"  // DB hostIP
+      gitlab_rails['db_port'] = "5432"
+      gitlab_rails['db_database'] = "gitlabhq_production"
+      gitlab_rails['db_adapter'] = 'postgresql'
+      gitlab_rails['db_encoding'] = 'utf8'
+      gitlab_rails['redis_host'] = 'redis'
+      gitlab_rails['redis_port'] = '6379'
+      gitlab_rails['gitlab_shell_ssh_port'] = 22
+
+      gitlab_pages['enable'] = true
+      pages_external_url 'http://gitlab.example.com/'
+      gitlab_pages['log_verbose'] = true
+      gitlab_pages['inplace_chroot'] = true
+
+      #backup
+      gitlab_rails['backup_upload_connection'] = {
+        'provider' => 'AWS',
+        'region' => 'ap-northeast-1',
+        'aws_access_key_id' => 'xxxxxxxxxxxx',
+        'aws_secret_access_key' => 'xxxxxxxxxxxxxxxxx'}
+      gitlab_rails['backup_upload_remote_directory'] = 'bucket'
+
+      #docker container
+      registry_external_url 'https://registry.example.com/'
+      registry['health_storagedriver_enabled'] = false
+      registry_nginx['listen_port'] = 80
+      registry_nginx['listen_https'] = false
+      registry_nginx['proxy_set_headers'] = {"X-Forwarded-Proto" => "https","X-Forwarded-Ssl" => "on"}
+      registry['storage'] = {
+        's3' => {
+          'accesskey' => 'xxxxxxxxxxxxxxxxxxx',
+          'secretkey' => 'xxxxxxxxxxxxxxxxxxx',
+          'bucket' => 'bucket',
+          'region' => 'ap-northeast-1'}}
+  ports:
+       - '80:80'
+       - '443:443'
+       - '2222:22'
+       - '8080:8080'
+      #  - '5001:5001'
+# postgresql:
+#   restart: always
+#   image: postgres:9.6.2-alpine
+#   environment:
+#     - POSTGRES_USER=gitlab
+#     - POSTGRES_PASSWORD=gitlab
+#     - POSTGRES_DB=gitlabhq_production
+redis:
+  restart: always
+  image: redis:3.0.7-alpine
